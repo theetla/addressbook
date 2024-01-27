@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none
 
     tools {
         // Install the Maven version configured as "M3" and add it to the path.
@@ -9,6 +9,7 @@ pipeline {
 
     stages {
         stage('compile') {
+            agent any 
             steps {
                 script{
                   echo "Compiling"
@@ -17,6 +18,7 @@ pipeline {
             }
         }
         stage('test') {
+            agent any
             steps {
                 script{
                     echo "Running the test cases"
@@ -32,10 +34,16 @@ pipeline {
         
         }
           stage('package') {
+            agent any
             steps {
+
                 script{
-                   echo "generating ready to be deployable files"
-                   sh "mvn package"
+                    sshagent(['slave1']){
+                         sh "scp -o StrictHostKeyChecking=no server-script.sh ec2-user@172.31.44.172:/home/ec2-user"
+                         sh "ssh -o StrictHostKeyChecking=no  ec2-user@172.31.44.172 'bash server-script.sh' "
+                         echo "generating ready to be deployable files"
+                         sh "mvn package"
+                    }
                 }   
             }
         }
