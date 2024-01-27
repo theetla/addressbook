@@ -5,26 +5,31 @@ pipeline {
         // Install the Maven version configured as "M3" and add it to the path.
         maven "mymaven"
     }
+    
 
     stages {
         stage('compile') {
             steps {
-                
-                echo "compiling the source code"
+                script{
+                  echo "Compiling"
+                  sh "mvn compile"
+                }
             }
         }
         stage('test') {
             steps {
-                
-                
-                echo "testing using junit framework"
+                script{
+                    echo "Running the test cases"
+                    sh  "mvn test"
+                }    
             }
         }
           stage('package') {
             steps {
-                
-                
-                echo "generating ready to be deployable files"
+                script{
+                   echo "generating ready to be deployable files"
+                   sh "mvn package"
+                }   
             }
         }
     }
