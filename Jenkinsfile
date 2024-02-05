@@ -8,6 +8,7 @@ pipeline {
     environment{
         BUILD_SERVER="ec2-user@172.31.38.42"
         IMAGE_NAME="theetla/java-mvn-cicdrepos"
+        DEPLOY_SERVER="ec2-user@172.31.43.215"
     }
 
     stages {
@@ -53,5 +54,22 @@ pipeline {
                 }   
             }
         }
+
+        stage('deploy the docker container'){
+             agent any
+             steps{
+                script{
+                    sshagent(['slave1']){
+                     withCredentials([usernamePassword(credentialsId: 'buildserver', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]) { 
+                      sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} sudo yum install docker -y"
+                      sh "ssh ${DEPLOY_SERVER} sudo systemctl start docker"
+                      sh "ssh ${DEPLOY_SERVER} sudo docker login -u ${mydockerhubusername} -p ${mydockerhubpassword}"
+                      sh "ssh ${DEPLOY_SERVER} sudo docker run -itd -P ${IMAGE_NAME}:${BUILD_NUMBER}"    
+                    }
+
+                }
+             }
+        }
     }
+}
 }
