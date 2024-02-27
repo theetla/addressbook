@@ -54,7 +54,7 @@ pipeline {
             agent any
             steps{
                 script{
-               sshagent(['build-server']) {
+               sshagent(['slave1']) {
                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {          
                 echo "Containerising in ${params.ENV} environment"
                 //sh 'mvn compile'
@@ -88,33 +88,22 @@ pipeline {
                        }
                    }
         }
-        stage("Deploy"){
-            agent any
-            input{
-                message "Select the version to deploy"
-                ok "Version selected"
-                parameters{
-                    choice(name: 'NEWAPP',choices:['EKS','ONPrem','Ec2'])
+       stage("Deploy on EC2 instance created by TF"){
+          agent any
+           steps{
+               script{
+                   echo "Deployin on the instance"
+                    echo "${EC2_PUBLIC_IP}"
+                     sshagent(['slave1']) {
+                withCredentials([usernamePassword(credentialsId: 'buildserver', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]){
+                      sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP}  docker login -u $mydockerhubusername -p $mydockerhubpassword"
+                      sh "ssh ec2-user@${EC2_PUBLIC_IP}  docker run -itd -p 8080:8080 ${IMAGE_NAME}"
+                     
                 }
             }
-            steps{
-                script{
-                 sshagent(['build-server']) {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {          
-                echo "Deploying in ${params.ENV} environment"
-                //sh 'mvn compile'
-                
-                sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP} sudo yum install docker -y"
-                sh "ssh ec2-user@${EC2_PUBLIC_IP} sudo systemctl start docker"
-                sh "ssh ec2-user@${EC2_PUBLIC_IP} sudo docker login -u ${USERNAME} -p ${PASSWORD}"
-                sh "ssh ec2-user@${EC2_PUBLIC_IP} sudo docker run -itd -p 8001:8080 ${IMAGE_NAME}:${BUILD_NUMBER}"
-                }
             }
-
                 }
-            }
-
-        }
+                }
         // stage("K8s deploy"){
         //     agent any
         //        steps{
