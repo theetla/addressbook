@@ -1,128 +1,91 @@
+
 pipeline {
-    agent none
-    tools{
-        maven 'mymaven'
-        jdk 'myjava'
-    }
-
-    parameters{
-         string(name: 'ENV', defaultValue: 'DEV', description: 'env to compile')
-         booleanParam(name: 'executeTest', defaultValue: true, description: 'decide to run tc')
-         choice(name: 'APPVERSION', choices: ['1.1', '1.2', '1.3'], description: 'Pick app version')
-    }
-
-    environment{
-        BUILD_SERVER='ec2-user@172.31.32.218'
-        IMAGE_NAME='devopstrainer/java-mvn-privaterepos'
-        //DEPLOY_SERVER='ec2-user@172.31.36.141'
-    }
-
+   agent none
+   tools{
+         jdk 'myjava'
+         maven 'mymaven'
+   }
+   environment{
+       BUILD_SERVER_IP='ec2-user@172.31.42.163'
+       IMAGE_NAME='theetla/java-mvn-cicdrepos:$BUILD_NUMBER'
+   }
     stages {
         stage('Compile') {
-            agent any
+           agent any
             steps {
-                script{   
-           // sshagent(['build-server']) {
-                         
-                echo "Compiling in ${params.ENV} environment"
-                sh 'mvn compile'
-                
-           // }
+              script{
+                  echo "BUILDING THE CODE"
+                  sh 'mvn compile'
+              }
             }
-            } 
-        }
-        stage("UnitTest"){
-            agent any
-            when{
-                expression{
-                    params.executeTest == true
-                }
             }
-            steps{
-                script{
-                echo "Run the Unit test cases"
-                sh 'mvn test'
-            }
+        stage('UnitTest') {
+        agent any
+        steps {
+            script{
+              echo "TESTING THE CODE"
+              sh "mvn test"
+              }
             }
             post{
                 always{
                     junit 'target/surefire-reports/*.xml'
                 }
             }
-        }
-        stage("Dockerise"){
-            agent any
-            steps{
+            }
+        stage('PACKAGE+BUILD DOCKERIMAGE AND PUSH TO DOKCERHUB') {
+            agent any            
+            steps {
                 script{
-               sshagent(['slave1']) {
-               withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {          
-                echo "Containerising in ${params.ENV} environment"
-                //sh 'mvn compile'
-                sh "scp -o StrictHostKeyChecking=no server-config.sh ${BUILD_SERVER}:/home/ec2-user"
-                sh "ssh -o StrictHostKeyChecking=no ${BUILD_SERVER} 'bash ~/server-config.sh ${IMAGE_NAME} ${BUILD_NUMBER}'"
-                sh "ssh ${BUILD_SERVER} sudo docker login -u ${USERNAME} -p ${PASSWORD}"
-                sh "ssh ${BUILD_SERVER} sudo docker push ${IMAGE_NAME}:${BUILD_NUMBER}"
-
+                sshagent(['slave1']) {
+                withCredentials([usernamePassword(credentialsId: 'buildserver', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]) {
+                echo "Packaging the apps"
+                sh "scp -o StrictHostKeyChecking=no server-script.sh ${BUILD_SERVER_IP}:/home/ec2-user"
+                sh "ssh -o StrictHostKeyChecking=no ${BUILD_SERVER_IP} 'bash ~/server-script.sh'"
+                sh "ssh ${BUILD_SERVER_IP} sudo docker build -t ${IMAGE_NAME} /home/ec2-user/addressbook"
+                sh "ssh ${BUILD_SERVER_IP} sudo docker login -u $mydockerhubusername -p $mydockerhubpassword"
+                sh "ssh ${BUILD_SERVER_IP} sudo docker push ${IMAGE_NAME}"
+              }
             }
-                }
-                }
             }
         }
-        stage("Provision deploy server with TF"){
+        }
+       stage('Provision the server with TF'){
             environment{
-                   AWS_ACCESS_KEY_ID =credentials("jenkins_aws_access_key_id")
-                   AWS_SECRET_ACCESS_KEY=credentials("jenkins_aws_secret_access_key")
+                   AWS_ACCESS_KEY_ID =credentials("ACCESS_KEY")
+                   AWS_SECRET_ACCESS_KEY=credentials("SECRET_ACCESS_KEY")
             }
-             agent any
-                   steps{
-                       script{
-                           dir('terraform'){
-                           sh "terraform init"
-                           sh "terraform apply --auto-approve"
-                           EC2_PUBLIC_IP = sh(
-                            script: "terraform output ec2-public-ip",
-                            returnStdout: true
-                           ).trim()
-                           sh "terraform destroy --auto-approve"
-                       }
-                       }
+           agent any
+           steps{
+               script{
+                   echo "RUN THE TF Code"
+                   dir('terraform'){
+                       sh "terraform init"
+                       sh "terraform apply --auto-approve"
+                    EC2_PUBLIC_IP=sh(
+                        script: "terraform output ec2-ip",
+                        returnStdout: true
+                    ).trim()
                    }
-        }
-        stage("Deploy"){
-            agent any
-            input{
-                message "Select the version to deploy"
-                ok "Version selected"
-                parameters{
-                    choice(name: 'NEWAPP',choices:['EKS','ONPrem','Ec2'])
+                                     
+               }
+           }
+       }
+       stage("Deploy on EC2 instance created by TF"){
+          agent any
+           steps{
+               script{
+                   echo "Deployin on the instance"
+                    echo "${EC2_PUBLIC_IP}"
+                     sshagent(['slave1']) {
+                withCredentials([usernamePassword(credentialsId: 'buildserver', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]){
+                      sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP}  docker login -u $mydockerhubusername -p $mydockerhubpassword"
+                      sh "ssh ec2-user@${EC2_PUBLIC_IP}  docker run -itd -p 8080:8080 ${IMAGE_NAME}"
+                     
                 }
             }
-            steps{
-                script{
-                 sshagent(['build-server']) {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {          
-                echo "Deploying in ${params.ENV} environment"
-                //sh 'mvn compile'
-                
-                sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP} sudo yum install docker -y"
-                sh "ssh ec2-user@${EC2_PUBLIC_IP} sudo systemctl start docker"
-                sh "ssh ec2-user@${EC2_PUBLIC_IP} sudo docker login -u ${USERNAME} -p ${PASSWORD}"
-                sh "ssh ec2-user@${EC2_PUBLIC_IP} sudo docker run -itd -p 8001:8080 ${IMAGE_NAME}:${BUILD_NUMBER}"
-                }
             }
-
                 }
-            }
-
-        }
-        // stage("K8s deploy"){
-        //     agent any
-        //        steps{
-        //         script{
-        //             echo "apply k8s manifest files"
-        //             sh 'envsubst < java-mvn-app.yml | kubectl apply -f -'
-        //         }
-        //        }
-        // }
-    }
+                }
+                   }
 }
