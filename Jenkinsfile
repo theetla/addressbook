@@ -6,9 +6,9 @@ pipeline {
          maven 'mymaven'
    }
    environment{
-       BUILD_SERVER_IP='ec2-user@172.31.3.237'
+       BUILD_SERVER_IP='ec2-user@172.31.15.230'
        IMAGE_NAME='theetla/java-mvn-cicdrepos:$BUILD_NUMBER'
-       ACM_IP='ec2-user@ip'
+       ACM_IP='ec2-user@172.31.43.33'
        AWS_ACCESS_KEY_ID =credentials("ACCESS_KEY")
        AWS_SECRET_ACCESS_KEY =credentials("SECRET_ACCESS_KEY")
        DOCKER_REG_PASSWORD=credentials("DOCKER_REG_PASSWORD")
@@ -84,7 +84,7 @@ pipeline {
                sshagent(['slave1']) {
     sh "scp -o StrictHostKeyChecking=no ansible/* ${ACM_IP}:/home/ec2-user"
     //copy the ansible target key on ACM as private key file
-    withCredentials([sshUserPrivateKey(credentialsId: 'Ansible_target',keyFileVariable: 'keyfile',usernameVariable: 'user')]){ 
+    withCredentials([sshUserPrivateKey(credentialsId: 'ANSIBLE_TARGET_KEY',keyFileVariable: 'keyfile',usernameVariable: 'user')]){ 
     sh "scp -o StrictHostKeyChecking=no $keyfile ${ACM_IP}:/home/ec2-user/.ssh/id_rsa"    
     }
     sh "ssh -o StrictHostKeyChecking=no ${ACM_IP} bash /home/ec2-user/prepare-playbook.sh ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} ${DOCKER_REG_PASSWORD} ${IMAGE_NAME}"
