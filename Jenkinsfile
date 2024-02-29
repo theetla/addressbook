@@ -79,8 +79,8 @@ pipeline {
                     echo "${EC2_PUBLIC_IP}"
                      sshagent(['slave1']) {
                 withCredentials([usernamePassword(credentialsId: 'buildserver', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]){
-                      sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP} sudo docker login -u $mydockerhubusername -p $mydockerhubpassword"
-                      sh "ssh ec2-user@${EC2_PUBLIC_IP} sudo docker run -itd -p 8080:8080 ${IMAGE_NAME}"
+                      sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP} docker login -u $mydockerhubusername -p $mydockerhubpassword"
+                      sh "ssh ec2-user@${EC2_PUBLIC_IP} docker run -itd -p 8080:8080 ${IMAGE_NAME}"
                      
                 }
             }
