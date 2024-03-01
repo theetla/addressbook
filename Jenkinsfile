@@ -6,7 +6,7 @@ pipeline {
          maven 'mymaven'
    }
    environment{
-       BUILD_SERVER_IP='ec2-user@172.31.8.25'
+       BUILD_SERVER_IP='ec2-user@3.109.216.208'
        IMAGE_NAME='theetla/java-mvn-cicdrepos:$BUILD_NUMBER'
    }
     stages {
