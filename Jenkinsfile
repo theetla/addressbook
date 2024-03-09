@@ -6,9 +6,9 @@ pipeline {
         maven "mymaven"
     }
     environment{
-        BUILD_SERVER="ec2-user@172.31.7.115"
+        BUILD_SERVER="ec2-user@172.31.33.21"
         IMAGE_NAME="theetla/java-mvn-cicdrepos"
-        DEPLOY_SERVER="ec2-user@172.31.6.140"
+        DEPLOY_SERVER="ec2-user@172.31.43.78"
     }
 
     stages {
