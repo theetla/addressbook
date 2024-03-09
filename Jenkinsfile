@@ -39,8 +39,8 @@ pipeline {
 
                 script{
                     sshagent(['slave1']){
-                         sh "scp -o StrictHostKeyChecking=no server-script.sh ec2-user@172.31.44.172:/home/ec2-user"
-                         sh "ssh -o StrictHostKeyChecking=no  ec2-user@172.31.44.172 'bash server-script.sh' "
+                         sh "scp -o StrictHostKeyChecking=no server-script.sh ec2-user@172.31.45.250:/home/ec2-user"
+                         sh "ssh -o StrictHostKeyChecking=no  ec2-user@172.31.45.250 'bash server-script.sh' "
                          echo "generating ready to be deployable files"
                          sh "mvn package"
                     }
