@@ -38,12 +38,12 @@ pipeline {
             steps {
                 script{
                 sshagent(['slave1']) {
-                withCredentials([usernamePassword(credentialsId: 'ec2-user', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]) {
                 echo "Packaging the apps"
                 sh "scp -o StrictHostKeyChecking=no server-script.sh ${BUILD_SERVER_IP}:/home/ec2-user"
                 sh "ssh -o StrictHostKeyChecking=no ${BUILD_SERVER_IP} 'bash ~/server-script.sh'"
                 sh "ssh ${BUILD_SERVER_IP} sudo docker build -t ${IMAGE_NAME} /home/ec2-user/addressbook"
-                sh "ssh ${BUILD_SERVER_IP} sudo docker login -u $USERNAME -p $PASSWORD"
+                sh "ssh ${BUILD_SERVER_IP} sudo docker login -u $mydockerhubusername -p $mydockerhubpassword"
                 sh "ssh ${BUILD_SERVER_IP} sudo docker push ${IMAGE_NAME}"
               }
             }
@@ -78,8 +78,8 @@ pipeline {
                    echo "Deployin on the instance"
                     echo "${EC2_PUBLIC_IP}"
                      sshagent(['slave1']) {
-                withCredentials([usernamePassword(credentialsId: 'ec2-user', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]){
-                      sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP} docker login -u $USERNAME -p $PASSWORD"
+                withCredentials([usernamePassword(credentialsId: 'ec2-user', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]){
+                      sh "ssh -o StrictHostKeyChecking=no ec2-user@${EC2_PUBLIC_IP} docker login -u $mydockerhubusername -p $mydockerhubpassword"
                       sh "ssh ec2-user@${EC2_PUBLIC_IP} docker run -itd -p 8080:8080 ${IMAGE_NAME}"
                      
                 }
