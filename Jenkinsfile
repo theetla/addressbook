@@ -6,9 +6,9 @@ pipeline {
          maven 'mymaven'
    }
    environment{
-       BUILD_SERVER_IP='ec2-user@172.31.15.230'
+       BUILD_SERVER_IP='ec2-user@172.31.40.63'
        IMAGE_NAME='theetla/java-mvn-cicdrepos:$BUILD_NUMBER'
-       ACM_IP='ec2-user@172.31.43.33'
+       ACM_IP='ec2-user@172.31.14.76'
        AWS_ACCESS_KEY_ID =credentials("ACCESS_KEY")
        AWS_SECRET_ACCESS_KEY =credentials("SECRET_ACCESS_KEY")
        DOCKER_REG_PASSWORD=credentials("DOCKER_REG_PASSWORD")
@@ -42,7 +42,7 @@ pipeline {
             steps {
                 script{
                 sshagent(['slave1']) {
-                withCredentials([usernamePassword(credentialsId: 'buildserver', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'mydockerhubpassword', usernameVariable: 'mydockerhubusername')]) {
                 echo "Packaging the apps"
                 sh "scp -o StrictHostKeyChecking=no server-script.sh ${BUILD_SERVER_IP}:/home/ec2-user"
                 sh "ssh -o StrictHostKeyChecking=no ${BUILD_SERVER_IP} bash /home/ec2-user/server-script.sh ${IMAGE_NAME}"
